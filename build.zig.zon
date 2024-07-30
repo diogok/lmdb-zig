@@ -1,0 +1,10 @@
+.{
+	.name = "lmdb",
+	.version = "0.0.0",
+	.paths =  .{"src"},
+	.dependencies =.{
+		.liblmdb = .{
+			.path = "liblmdb",
+		},
+	},
+}
