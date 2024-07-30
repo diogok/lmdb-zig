@@ -11,15 +11,15 @@ pub fn build(b: *std.Build) void {
         },
     );
 
+    const liblmdb = b.dependency("liblmdb", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const tests = b.addTest(.{
         .target = target,
         .optimize = optimize,
         .root_source_file = b.path("src/lmdb.zig"),
-    });
-
-    const liblmdb = b.dependency("liblmdb", .{
-        .target = target,
-        .optimize = optimize,
     });
 
     tests.linkLibrary(liblmdb.artifact("liblmdb"));
