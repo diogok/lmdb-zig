@@ -6,6 +6,8 @@ Tested with Zig 0.13.0.
 
 ## Usage
 
+Check the full documentation at [https://diogok.github.io/lmdb-zig/docs/].
+
 ```zig
 // This is the directory the DB will be stored
 var tmp = testing.tmpDir(.{});
