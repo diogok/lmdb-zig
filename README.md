@@ -2,7 +2,27 @@
 
 This is a wrapper for LMDB. Includes compiling LMDB from source.
 
-Tested with Zig 0.13.0.
+Tested with Zig 0.16.0.
+
+## Install
+
+Fetch the dependency:
+
+```sh
+zig fetch --save git+https://github.com/diogok/lmdb-zig
+```
+
+Then wire it into your `build.zig`:
+
+```zig
+const lmdb = b.dependency("lmdb", .{
+    .target = target,
+    .optimize = optimize,
+});
+exe.root_module.addImport("lmdb", lmdb.module("lmdb"));
+```
+
+LMDB itself is built from source by this package — no system dependency required.
 
 ## Usage
 
@@ -14,7 +34,7 @@ var tmp = testing.tmpDir(.{});
 defer tmp.cleanup();
 
 // We start by creating an Environment
-const env = try Environment.init(tmp.dir, .{});
+const env = try Environment.init(testing.io, tmp.dir, .{});
 defer env.deinit();
 
 // Next we get a Database handler
@@ -48,8 +68,8 @@ defer cursor.deinit();
 // Set the Cursor at a specific key
 var mkv = try cursor.set("key1");
 while (mkv) |kv| {
-	// kv[0] is the current key
-	// kv[1] is the current value for that key
+    // kv.key is the current key
+    // kv.value is the current value for that key
     mkv = try cursor.next();
 }
 

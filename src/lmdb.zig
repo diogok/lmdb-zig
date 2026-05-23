@@ -4,9 +4,7 @@
 const std = @import("std");
 const testing = std.testing;
 
-const c = @cImport({
-    @cInclude("lmdb.h");
-});
+const c = @import("c");
 
 const log = std.log.scoped(.LMDB);
 
@@ -31,7 +29,7 @@ pub const Environment = struct {
     environment: ?*c.MDB_env,
 
     /// Create and open an environment.
-    pub fn init(dir: std.fs.Dir, options: EnvironmentOptions) !@This() {
+    pub fn init(io: std.Io, dir: std.Io.Dir, options: EnvironmentOptions) !@This() {
         var env: ?*c.MDB_env = undefined;
         var r = c.mdb_env_create(&env);
         errdefer c.mdb_env_close(env);
@@ -48,9 +46,9 @@ pub const Environment = struct {
             return error.SetMaxDBsError;
         }
 
-        var buffer: [std.fs.MAX_PATH_BYTES:0]u8 = undefined;
-        const realpath = try dir.realpath(".", &buffer);
-        buffer[realpath.len] = 0;
+        var buffer: [std.Io.Dir.max_path_bytes:0]u8 = undefined;
+        const realpath_len = try dir.realPath(io, &buffer);
+        buffer[realpath_len] = 0;
 
         // TODO: flags
         r = c.mdb_env_open(env, @as([*c]const u8, @ptrCast(&buffer)), 0, options.dir_mode);
@@ -242,8 +240,11 @@ pub const DBTX = struct {
     }
 };
 
-/// A KeyValue Tuple.
-pub const KV = std.meta.Tuple(&[_]type{ []const u8, []const u8 });
+/// A KeyValue pair.
+pub const KV = struct {
+    key: []const u8,
+    value: []const u8,
+};
 
 /// Cursors are used for iterating over a Database.
 /// You can get it from a DBTX.
@@ -266,7 +267,7 @@ pub const Cursor = struct {
 
         const key = @as([*]const u8, @ptrCast(k.mv_data))[0..k.mv_size];
         const value = @as([*]const u8, @ptrCast(v.mv_data))[0..v.mv_size];
-        return .{ key, value };
+        return .{ .key = key, .value = value };
     }
 
     /// Set the cursor at Key position.
@@ -281,7 +282,7 @@ pub const Cursor = struct {
         }
 
         const value = @as([*]const u8, @ptrCast(v.mv_data))[0..v.mv_size];
-        return .{ key, value };
+        return .{ .key = key, .value = value };
     }
 
     /// Get next KeyValue and advance the cursor.
@@ -301,7 +302,7 @@ pub const Cursor = struct {
 
         const key = @as([*]const u8, @ptrCast(k.mv_data))[0..k.mv_size];
         const value = @as([*]const u8, @ptrCast(v.mv_data))[0..v.mv_size];
-        return .{ key, value };
+        return .{ .key = key, .value = value };
     }
 
     pub fn deinit(self: *@This()) void {
@@ -313,7 +314,7 @@ test "lmdb basic" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
 
-    const env = try Environment.init(tmp.dir, .{ .max_dbs = 1 });
+    const env = try Environment.init(testing.io, tmp.dir, .{ .max_dbs = 1 });
     defer env.deinit();
     const db = try env.openDatabase("mydb");
 
@@ -349,7 +350,7 @@ test "lmdb single null DB" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
 
-    const env = try Environment.init(tmp.dir, .{});
+    const env = try Environment.init(testing.io, tmp.dir, .{});
     defer env.deinit();
     const db = try env.openDatabase(null);
 
@@ -369,7 +370,7 @@ test "lmdb cursors" {
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
 
-    const env = try Environment.init(tmp.dir, .{});
+    const env = try Environment.init(testing.io, tmp.dir, .{});
     defer env.deinit();
     const db = try env.openDatabase(null);
 
@@ -392,7 +393,7 @@ test "lmdb cursors" {
 
     var mkv = try cursor.set("key1");
     while (mkv) |kv| {
-        values[i] = kv[1];
+        values[i] = kv.value;
         i += 1;
         mkv = try cursor.next();
     }
