@@ -536,7 +536,7 @@ fn fill(env: Environment, db: Database, count: usize) Error!void {
     var tx = try env.beginTransaction(.ReadAndWrite);
     defer tx.abort();
     const dbTX = tx.withDatabase(db);
-    const value = [_]u8{'x'} ** 4096;
+    const value: [4096]u8 = @splat('x');
     var key: [8]u8 = undefined;
     for (0..count) |i| {
         const k = std.fmt.bufPrint(&key, "{d:0>8}", .{i}) catch unreachable;
